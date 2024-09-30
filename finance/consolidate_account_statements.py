@@ -27,19 +27,20 @@ in chronological order to facilitate analytical data processing.
 3. Schema of consolidated account statement
 
     Column Name	        Data Type
+
     date    	        datetime
     description 	    varchar
-    debit	            float
     credit	            float
+    debit	            float
+    balance             float
     bank    	        varchar
-    account holder  	varchar
-    balance	            float
+    account_holder     	varchar
 """
 
 import os
 import re
 
-from pandas import concat, DataFrame, read_csv, read_excel, to_datetime
+from pandas import concat, DataFrame, read_csv, read_excel, Series, to_datetime
 from typing import Dict, List, Optional, Tuple, Union
 
 def are_files_continuous(file_names: List[str]) -> bool:
@@ -89,8 +90,7 @@ def are_files_continuous(file_names: List[str]) -> bool:
 def consolidate_statements(bank_statements: Dict[str, DataFrame]) -> DataFrame:
 
     """
-    Consolidates multiple bank statement DataFrames into a single DataFrame, recalculating the balances based on opening
-    balances, credits and debits. It adjusts the opening balance for each statement and computes the cumulative running
+    Consolidates multiple bank statement DataFrames into a single DataFrame, recalculating the cumulative running
     balance across all transactions.
 
     args:
@@ -106,21 +106,10 @@ def consolidate_statements(bank_statements: Dict[str, DataFrame]) -> DataFrame:
         None
     """
 
-    opening_transaction: DataFrame = concat([statement.iloc[[0]] for statement in bank_statements.values()])
-    opening_transaction["opening_balance"] = (opening_transaction["balance"]
-                                              - opening_transaction["credit"]
-                                              + opening_transaction["debit"])
-
     return (concat(bank_statements.values(), ignore_index=True)
-            .drop(columns=["balance"])
-            .merge(opening_transaction[["date", "opening_balance"]], on="date", how="left")
-            .fillna(0)
             .sort_values(by=["date", "credit"], ascending=[True, False])
-            .assign(balance=lambda statement: 
-                    (statement["credit"]
-                     - statement["debit"]
-                     + statement["opening_balance"]).cumsum())
-            .drop(columns=["opening_balance"]))
+            .assign(balance=lambda x: (x['credit'] + x['debit']).cumsum())
+            .reindex(columns=["date", "description", "credit", "debit", "balance", "bank", "account_holder"]))
     
 def enrich_cb_statement(statement: DataFrame) -> DataFrame:
 
@@ -191,6 +180,46 @@ def enrich_icici_statement(statement: DataFrame) -> DataFrame:
                     balance=lambda x: x["balance"].astype(str).str.replace(r"[^0-9.]", "", regex=True)
                     .replace("", 0.0).astype(float))
                     .dropna())
+
+def enrich_merged_statement(bank_statements: Dict[str, DataFrame]) -> Dict[str, DataFrame]:
+
+    """
+    Takes a dictionary of bank statements and adds an initial "Balance brought forward" row for each statement, drops
+    the balance column and assigns minus sign to debit values.
+
+    args:
+        bank_statements (Dict[str, DataFrame]): A dictionary where the keys are bank identifiers and the values
+                                                are DataFrames containing bank transactions with columns like
+                                                "date", "description", "credit", "debit", and "balance".
+
+    returns:
+        Dict[str, DataFrame]: A dictionary with the same keys, but with the enriched DataFrames, with the "balance"
+                              column removed and contains an opening balance as debit or credit with appropriate sign
+                              convention.
+
+    raises:
+        None
+    """
+
+    for bank_account in bank_statements.keys():
+        statement = bank_statements.get(bank_account)
+
+        opening_transaction: Series = statement.iloc[0].copy()
+        opening_transaction["description"] = "Balance brought forward"
+        opening_transaction["balance"] += opening_transaction["debit"] - opening_transaction["credit"]
+        if opening_transaction["balance"] >= 0:
+            opening_transaction["debit"], opening_transaction["credit"] = 0.0, opening_transaction["balance"]
+        else:
+            opening_transaction["debit"], opening_transaction["credit"] = opening_transaction["balance"], 0.0
+
+        statement = (concat([DataFrame([opening_transaction]), statement], ignore_index=True)
+                     .assign(debit=lambda x: (- x["debit"]))
+                     .drop(columns=["balance"])
+                     .rename(columns={"account holder": "account_holder"})
+                     .reindex(columns=["date", "description", "credit", "debit", "bank", "account_holder"]))
+
+        bank_statements[bank_account] = statement
+    return bank_statements
     
 def enrich_sbi_statement(statement: DataFrame) -> DataFrame:
 
@@ -341,8 +370,8 @@ def get_consolidated_statement(directory: str, account_holders: Dict[str, str]) 
         None
     """
 
-    return consolidate_statements(merge_statements(enrich_statements(load_all_files(directory), 
-                                                                     account_holders)))
+    return consolidate_statements(enrich_merged_statement(merge_statements(enrich_statements(load_all_files(directory),
+                                                                                             account_holders))))
     
 def load_all_files(directory: str) -> Dict[str, Optional[Union[Dict[str, DataFrame], DataFrame]]]:
 
