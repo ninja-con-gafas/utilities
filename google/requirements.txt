@@ -2,3 +2,5 @@ google-api-python-client == 2.138.0
 google-auth == 2.34.0
 gspread == 5.7.2
 pandas == 2.1.4
+youtube-transcript-api == 0.6.2
+yt-dlp == 2024.8.6

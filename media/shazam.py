@@ -16,53 +16,15 @@ usage:
     python3 shazam.py ../SyncedShazams.csv ../credentials/shazam.json
 """
 
-
-import yt_dlp
-
-from google.youtube import get_credentials, get_video_url
 from concurrent import futures
+from google.youtube import download_audio_as_mp3
+from google.youtube import get_credentials, get_video_url
 from os import path
 from pandas import DataFrame, read_csv
 from sys import argv
 from typing import Callable, Any
 
 DOWNLOADS_PATH = path.expanduser("~/Downloads/")
-
-def download_audio_as_mp3(file_name: str, url: str) -> None:
-
-    """
-    Download the best available audio stream from a YouTube video and save it as a mp3 file.
-
-    args:
-        file_name (str): Name of the mp3 file to save the audio stream.
-        url (str): URL of the YouTube video to download.
-
-    returns:
-        None
-
-    raises:
-        yt_dlp.utils.DownloadError: If there is an error during the download process.
-        yt_dlp.utils.ExtractorError: If there is an error extracting the video information.
-    """
-
-    try:
-        print(f"Downloading audio stream for {file_name} from {url}")
-        ydl_opts = {
-            "format": "bestaudio/best",
-            "postprocessors": [{
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": "mp3",
-                "preferredquality": "0",
-            }],
-            "outtmpl": f"{DOWNLOADS_PATH}{file_name}.%(ext)s",
-            'socket_timeout': 30,
-        }
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-    except (AttributeError, TypeError, ValueError,
-            yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError) as exception:
-        print(f"Error downloading {file_name}: {exception} for URL {url}")
-
 
 def extract_shazams(path: str) -> DataFrame:
 
