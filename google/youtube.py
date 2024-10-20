@@ -8,15 +8,15 @@ import yt_dlp
 
 from googleapiclient import discovery, errors
 from os import path
+from re import search
 from socket import timeout
 from typing import Dict
-from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled
 from youtube_transcript_api.formatters import TextFormatter
 
 DOWNLOADS_PATH = path.expanduser("~/Downloads/")
 
 def download_audio_as_mp3(file_name: str, url: str) -> None:
-
     """
     Download the best available audio stream from a YouTube video and save it as a mp3 file.
 
@@ -51,7 +51,6 @@ def download_audio_as_mp3(file_name: str, url: str) -> None:
         print(f"Error downloading {file_name}: {exception} for URL {url}")
 
 def download_video_as_mp4(file_name: str, url: str) -> None:
-
     """
     Download the best available video stream from a YouTube video and save it as a mp4 file.
 
@@ -93,6 +92,22 @@ def get_credentials(path: str) -> Dict[str, str]:
     with open(path) as credentials_path:
         return json.load(credentials_path)
 
+def get_video_id(url: str) -> str:
+    """
+    Extracts the video ID from a YouTube URL using regular expression.
+
+    args:
+        url (str): The YouTube URL string from which the video ID should be extracted.
+
+    returns:
+        str: The extracted video ID.
+
+    raises:
+        AttributeError: If the pattern is not found in the input string.
+    """
+    pattern = r'(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=|live/)|youtu\.be/)([^"&?/ ]{11})'
+    return search(pattern=pattern, string=url).group(1)
+
 def get_video_transcript_en(video_id: str) -> str:
     """
     Retrieves the English transcript of a YouTube video and returns it in plain text format.
@@ -103,7 +118,10 @@ def get_video_transcript_en(video_id: str) -> str:
     returns:
         str: A plain text formatted string containing the transcript of the video.
     """
-    return TextFormatter().format_transcript(YouTubeTranscriptApi.get_transcript(video_id))
+    try:
+        return TextFormatter().format_transcript(YouTubeTranscriptApi.get_transcript(video_id))
+    except TranscriptsDisabled:
+        return f"Transcripts are disabled for video ID {video_id}"
         
 def get_video_url(developer_key: str, service_name: str, query: str, version: str) -> str:
     """
