@@ -6,16 +6,19 @@ The repository features a collection of diverse utilities designed and developed
 Assist in managing and processing financial data.
 
 - **1.1. Consolidate Bank Account Statements**:  
-  Merges bank statements from multiple individuals and accounts into a single, unified pandas DataFrame.
+  Merges bank statements from multiple individuals and accounts into a single, unified CSV file.
 
 ## 2. Google
-Facilitate interactions with Google Sheets and YouTube.
+Facilitate interactions with Google AI Studio, Google Sheets and YouTube.
 
-- **2.1. Google Sheets**:  
-  Facilitates interactions with Google Sheets for data retrieval, manipulation, and updates through the Google Sheets API.
+- **2.1. Google AI**:  
+  Facilitates interactions with Google AI through the Gemini Developer API.
+
+- **2.2. Google Sheets**:  
+  Facilitates interactions with Google Sheets for data retrieval, manipulation, and updates through the Google Sheets API and third party libraries.
 
 - **2.2. YouTube**:  
-  Facilitates interactions with YouTube for data retrieval through the YouTube Data API.
+  Facilitates interactions with YouTube for data retrieval through the YouTube Data API and third party libraries.
 
 ## 3. Media
 Assist in managing and processing media-related data.
