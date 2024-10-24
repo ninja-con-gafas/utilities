@@ -22,43 +22,25 @@ from google.youtube import get_credentials, get_video_url
 from os import path
 from pandas import DataFrame, read_csv
 from sys import argv
-from typing import Callable, Any
 
 DOWNLOADS_PATH = path.expanduser("~/Downloads/")
 
-def extract_shazams(path: str) -> DataFrame:
+def extract_shazams(file_path: str) -> DataFrame:
 
     """
     Extract unique Shazam tracks from a CSV file, dropping unnecessary columns.
 
     args:
-        path (str): Path to the Shazam CSV file.
+        file_path (str): Path to the Shazam CSV file.
 
     returns:
         DataFrame: A DataFrame containing the unique Shazam tracks.
     """
 
-    return read_csv(filepath_or_buffer=path) \
+    return read_csv(filepath_or_buffer=file_path) \
         .drop_duplicates(subset=["artist", "title"]) \
         .drop(columns=["date", "latitude", "longitude", "status"], errors="ignore") \
         .sort_values(by=["artist", "title"])
-
-
-def process(function: Callable[..., Any], **kwargs: Any):
-
-    """
-    Execute a function with the provided keyword arguments.
-
-    args:
-        function (Callable): The function to be executed.
-        **kwargs (Any): The arguments to pass to the function.
-
-    returns:
-        Any: The result of the function execution.
-    """
-
-    return function(**kwargs)
-
 
 def main() -> None:
 
@@ -69,21 +51,22 @@ def main() -> None:
     if len(argv) != 2:
         print(f"Usage: python3 {argv[0]} ../SyncedShazams.csv ../credentials/shazam.json")
     else:
-        shazams: DataFrame = extract_shazams(path=argv[1])
+        shazams: DataFrame = extract_shazams(file_path=argv[1])
         credentials = get_credentials(path=argv[2])
 
-        shazams["url"] = (shazams["title"] + " " + shazams["artist"])\
+        shazams["url"] = ((shazams["title"] + " " + shazams["artist"])
                           .apply(func=lambda query: get_video_url(developer_key=credentials.get("api_key"),
                                                                   service_name=credentials.get("service_name"),
                                                                   version=credentials.get("version"),
-                                                                  query=query))
+                                                                  query=query)))
 
         shazams.to_csv(path_or_buf=f"{DOWNLOADS_PATH}shazams.csv", index=False)
 
         with futures.ThreadPoolExecutor() as executor:
-            executor.map(lambda row: process(download_audio_as_mp3, file_name=row["title"], url=row["url"]),
+            executor.map(lambda row: download_audio_as_mp3(download_path=DOWNLOADS_PATH,
+                                                           file_name=row["title"],
+                                                           url=row["url"]),
                          shazams.to_dict(orient="records"))
-
 
 if __name__ == "__main__":
     main()
