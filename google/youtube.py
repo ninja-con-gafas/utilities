@@ -2,25 +2,23 @@
 The module provides utilities to interact with YouTube.
 """
 
-
 import json
 import yt_dlp
 
 from googleapiclient import discovery, errors
-from os import path
 from re import search
 from socket import timeout
 from typing import Dict
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled
 from youtube_transcript_api.formatters import TextFormatter
 
-DOWNLOADS_PATH = path.expanduser("~/Downloads/")
+def download_audio_as_mp3(download_path: str, file_name: str, url: str) -> None:
 
-def download_audio_as_mp3(file_name: str, url: str) -> None:
     """
     Download the best available audio stream from a YouTube video and save it as a mp3 file.
 
     args:
+        download_path (str): Path to download the mp3 file.
         file_name (str): Name of the mp3 file to save the audio stream.
         url (str): URL of the YouTube video to download.
 
@@ -33,7 +31,7 @@ def download_audio_as_mp3(file_name: str, url: str) -> None:
     """
 
     try:
-        print(f"Downloading audio stream for {file_name} from {url}")
+        print(f"Downloading audio stream for {file_name} from URL: {url}")
         ydl_opts = {
             "format": "bestaudio/best",
             "postprocessors": [{
@@ -41,20 +39,22 @@ def download_audio_as_mp3(file_name: str, url: str) -> None:
                 "preferredcodec": "mp3",
                 "preferredquality": "0",
             }],
-            "outtmpl": f"{DOWNLOADS_PATH}{file_name}.%(ext)s",
+            "outtmpl": f"{download_path}{file_name}.%(ext)s",
             'socket_timeout': 30,
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
     except (AttributeError, TypeError, ValueError,
             yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError) as exception:
-        print(f"Error downloading {file_name}: {exception} for URL {url}")
+        print(f"Error downloading {file_name}: {exception} for URL: {url}")
 
-def download_video_as_mp4(file_name: str, url: str) -> None:
+def download_video_as_mp4(download_path: str, file_name: str, url: str) -> None:
+
     """
     Download the best available video stream from a YouTube video and save it as a mp4 file.
 
     args:
+        download_path (str): Path to download the mp4 file.
         file_name (str): Name of the mp4 file to save the video stream.
         url (str): URL of the YouTube video to download.
 
@@ -67,19 +67,20 @@ def download_video_as_mp4(file_name: str, url: str) -> None:
     """
 
     try:
-        print(f"Downloading video stream for {file_name} from {url}")
+        print(f"Downloading video stream for {file_name} from URL: {url}")
         ydl_opts = {
             "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-            "outtmpl": f"{DOWNLOADS_PATH}{file_name}.%(ext)s",
+            "outtmpl": f"{download_path}{file_name}.%(ext)s",
             'socket_timeout': 30,
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
     except (AttributeError, TypeError, ValueError,
             yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError) as exception:
-        print(f"Error downloading {file_name}: {exception} for URL {url}")
+        print(f"Error downloading {file_name}: {exception} for URL: {url}")
 
 def get_credentials(path: str) -> Dict[str, str]:
+
     """
     Load API credentials from a JSON file.
 
@@ -89,10 +90,13 @@ def get_credentials(path: str) -> Dict[str, str]:
     returns:
         dict: Dictionary containing API credentials.
     """
+
+    print(f"Reading Google API credentials from the file: {path}")
     with open(path) as credentials_path:
         return json.load(credentials_path)
 
 def get_video_id(url: str) -> str:
+
     """
     Extracts the video ID from a YouTube URL using regular expression.
 
@@ -105,10 +109,13 @@ def get_video_id(url: str) -> str:
     raises:
         AttributeError: If the pattern is not found in the input string.
     """
+
+    print(f"Extracting Video ID from URL: {url}")
     pattern = r'(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=|live/)|youtu\.be/)([^"&?/ ]{11})'
     return search(pattern=pattern, string=url).group(1)
 
 def get_video_transcript_en(video_id: str) -> str:
+
     """
     Retrieves the English transcript of a YouTube video and returns it in plain text format.
 
@@ -118,12 +125,15 @@ def get_video_transcript_en(video_id: str) -> str:
     returns:
         str: A plain text formatted string containing the transcript of the video.
     """
+
     try:
+        print(f"Fetching English transcript for the video ID: {video_id}")
         return TextFormatter().format_transcript(YouTubeTranscriptApi.get_transcript(video_id))
     except TranscriptsDisabled:
         return f"Transcripts are disabled for video ID {video_id}"
         
 def get_video_url(developer_key: str, service_name: str, query: str, version: str) -> str:
+
     """
     Get the YouTube video URL corresponding to the query.
 
