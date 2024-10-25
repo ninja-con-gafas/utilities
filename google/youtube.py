@@ -41,6 +41,8 @@ def download_audio_as_mp3(download_path: str, file_name: str, url: str) -> None:
             }],
             "outtmpl": f"{download_path}{file_name}.%(ext)s",
             'socket_timeout': 30,
+            "abort_on_unavailable_fragments": True,
+            "abort_on_error": True,
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
@@ -72,6 +74,8 @@ def download_video_as_mp4(download_path: str, file_name: str, url: str) -> None:
             "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
             "outtmpl": f"{download_path}{file_name}.%(ext)s",
             'socket_timeout': 30,
+            "abort_on_unavailable_fragments": True,
+            "abort_on_error": True,
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
